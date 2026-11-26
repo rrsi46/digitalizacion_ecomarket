@@ -1,0 +1,45 @@
+services:
+  ecomarket-db:
+    image: mariadb:10.11
+    container_name: ecomarket-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpassword
+      MARIADB_DATABASE: ecomarket_db
+      MARIADB_USER: ecomarket_user
+      MARIADB_PASSWORD: ecomarket_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - ecomarket_db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - ecomarket-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ecofleet-psp:
+    build:
+      context: ./Ecofleet
+      dockerfile: Dockerfile
+    container_name: ecofleet-psp
+    restart: unless-stopped
+    depends_on:
+      ecomarket-db:
+        condition: service_healthy
+    environment:
+      DB_HOST: ecomarket-db
+      DB_PORT: 3306
+      SERVICE_MODE: "true"
+    networks:
+      - ecomarket-net
+
+volumes:
+  ecomarket_db_data:
+
+networks:
+  ecomarket-net:
+    driver: bridge
